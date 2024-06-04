@@ -51,6 +51,10 @@ void setup() {
   sr_4.attach(A1);
   sr_5.attach(A0);
 
+  Serial.begin()9600;
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB
+  }
 }
 
 void loop() {
