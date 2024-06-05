@@ -1,5 +1,8 @@
 #include <Servo.h>
 
+int received_serial_message[11];
+int old_serial_message[11];
+
 Servo sl_1;
 Servo sl_2;
 Servo sl_3;
@@ -51,7 +54,7 @@ void setup() {
   sr_4.attach(A1);
   sr_5.attach(A0);
 
-  Serial.begin()9600;
+  Serial.begin(115200);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB
   }
@@ -59,9 +62,39 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  receiveMessage();
+  if (received_serial_message[0] != old_serial_message[0]) {
+    mode = received_serial_message[0];
+    Serial.print("Mode changed to: ");
+    Serial.println(mode);
+    memcpy(old_serial_message,received_serial_message,sizeof(received_serial_message));
+  }
+  
   if (mode == 0){
     memcpy(set_position,start_position,sizeof(start_position));
     set_servos(set_position);
   }
-
+  
+  if (mode == 1){
+    //Serial.print("Set position changed to: ");
+    for (int i = 0; i <10; i++) {
+      set_position[i] = received_serial_message[i+1];
+      //Serial.print(set_position[i]);
+      //Serial.print(", ");
+    }
+    //Serial.println(" end");
+    set_servos(set_position);
+  }
 }
+
+void receiveMessage() {
+  if (Serial.available() >= 22) {  // Each int is 2 bytes, 22 bytes for 11 ints
+    for (int i = 0; i < 11; i++) {
+      received_serial_message[i] = Serial.read() | (Serial.read() << 8);  // Read two bytes and combine them into an int
+    }
+    //Serial.println("Array received:");
+    for (int i = 0; i < 11; i++) {
+      //Serial.println(received_serial_message[i]);
+    }
+  }
+ }
