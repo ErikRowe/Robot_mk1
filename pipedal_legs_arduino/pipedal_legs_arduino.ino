@@ -2,6 +2,8 @@
 
 int received_serial_message[11];
 int old_serial_message[11];
+bool receivingData = false;
+int index = 0;
 
 Servo sl_1;
 Servo sl_2;
@@ -19,6 +21,16 @@ int start_position[10]={90,180,25,155,55,
                         90,15,140,25,105};
 int set_position[10];
 
+void process_data(){
+  // Print the received array
+  for (int i = 0; i < 11; i++) {
+    Serial.print("Element ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(received_serial_message[i]);
+  }
+}
+
 void set_servos(int message[10]){
   sl_1.write(message[0]);
   sl_2.write(message[1]);
@@ -35,7 +47,7 @@ void set_servos(int message[10]){
 
 // Modes to put robot servos in.
 // Mode 0: start position
-// Mode 1: move based on input from uart
+// Mode 1: move based on input
 // Mode 2: freeze in place
 // Mode 3: cut power
 int mode = 0;
@@ -76,25 +88,40 @@ void loop() {
   }
   
   if (mode == 1){
-    //Serial.print("Set position changed to: ");
     for (int i = 0; i <10; i++) {
       set_position[i] = received_serial_message[i+1];
-      //Serial.print(set_position[i]);
-      //Serial.print(", ");
     }
-    //Serial.println(" end");
     set_servos(set_position);
   }
 }
 
 void receiveMessage() {
-  if (Serial.available() >= 22) {  // Each int is 2 bytes, 22 bytes for 11 ints
-    for (int i = 0; i < 11; i++) {
-      received_serial_message[i] = Serial.read() | (Serial.read() << 8);  // Read two bytes and combine them into an int
+  if (Serial.available() > 0) {
+    char receivedChar = Serial.read();
+
+    if (receivedChar == '<') {
+      receivingData = true;
+      index = 0;
     }
-    //Serial.println("Array received:");
-    for (int i = 0; i < 11; i++) {
-      //Serial.println(received_serial_message[i]);
+
+    else if (receivedChar == '>') {
+      receivingData = false;
+      process_data();
+    }
+
+    else if (receivingData) {
+      // Expecting two bytes per integer
+      if (index < 11 * 2) {
+        int byteIndex = index % 2;
+        if (byteIndex == 0) {
+          // First byte (low byte)
+          received_serial_message[index / 2] = receivedChar & 0xFF;
+        } else {
+          // Second byte (high byte)
+          received_serial_message[index / 2] |= (receivedChar & 0xFF) << 8;
+        }
+        index++;
+      }
     }
   }
  }
